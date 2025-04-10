@@ -2,7 +2,7 @@
 pragma solidity ^0.8.18;
 
 import {DecentralizedStableCoin} from "./DecentralizedStableCoin.sol";
-
+import {nonReentrant} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract DSCEngine is ReentrancyGuard {
@@ -20,6 +20,8 @@ contract DSCEngine is ReentrancyGuard {
     mapping(address token => address priceFeed) private s_priceFeeds;
     mapping(address user => mapping(address token => uint256 ammount))
         private s_collateralDeposite;
+    mapping(address => uint) private s_DSCMinted;
+    address[] private s_CollateralValues;
     DecentralizedStableCoin private immutable s_dsc;
 
     //////////
@@ -62,7 +64,8 @@ contract DSCEngine is ReentrancyGuard {
         }
 
         for (uint256 i = 0; i < tokenAddresses.length; i++) {
-            s_priceFeeds[tokenAddresses[i]] = priceFeedAddresses[i];
+            s_priceFeeds[_tokenAddresses[i]] = _priceFeedAddresses[i];
+            s_CollateralValues.push(_tokenAddresses[i]);
         }
 
         s_dsc = DecentralizedStableCoin(dscAddress);
@@ -105,11 +108,43 @@ contract DSCEngine is ReentrancyGuard {
 
     function redeemCollateral() external {}
 
-    function mintDsc(uint _ammount) external moreThanZero(_ammount) {}
+    function mintDsc(
+        uint _ammount
+    ) external moreThanZero(_ammount) nonReentrant {
+        s_DSCMinted[msg.sender] += _ammount;
+        getAccountCollateralValue(msg.sender);
+    }
 
     function burnDSC() external {}
 
     function liquadiate() external {}
 
     function getHealthFactor() external {}
+
+    //////////////
+    //Internal Functions//
+    //////////////
+
+    function _getUserAccInfo(address user) internal view returns (uint, uint) {
+        uint totalMintedDSC = s_DSCMinted[user];
+    }
+
+    function _healthFactor(address user) internal view {
+        //total dca minted
+        //total colleteral minted
+        (uint TotalDSCMinted, uint TotalCollateralDeposite) = _getUserAccInfo(
+            user
+        );
+    }
+
+    function revertIfHEalthFactorisBroken(address _user) internal view {}
+
+    function getAccountCollateralValue(
+        address user
+    ) public view returns (uint) {
+        for (uint i = 0; i < s_CollateralValues.length; i++) {
+            address token = s_CollateralValues[i];
+            uint ammount = s_collateralDeposite[user][token];
+        }
+    }
 }
