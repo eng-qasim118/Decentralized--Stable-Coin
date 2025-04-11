@@ -31,11 +31,10 @@ contract DecentralizedStableCoin is ERC20Burnable, Ownable {
     error DecentralizedStableCoin__MustBeMoreThanZero();
     error DecentralizedStableCoin__BurnAmountExceedsBalance();
     error DecentralizedStableCoin__NotZeroAddress();
-    error DecentralizedStableCoin__MustBeMoreThanZero();
 
     constructor() ERC20("Qasim Stable Coin", "QSC") {}
 
-    function burn(uint256 value) public override onlyOwner {
+    function burn(uint256 _amount) public override onlyOwner {
         uint256 balance = balanceOf(msg.sender); //get balance of user
         if (_amount <= 0) {
             revert DecentralizedStableCoin__MustBeMoreThanZero();
@@ -56,7 +55,7 @@ contract DecentralizedStableCoin is ERC20Burnable, Ownable {
         if (_amount <= 0) {
             revert DecentralizedStableCoin__MustBeMoreThanZero();
         }
-        _mint(_to, amount);
+        _mint(_to, _amount);
         return true;
     }
 }
