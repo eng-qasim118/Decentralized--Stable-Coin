@@ -14,6 +14,8 @@ contract Handler is Test {
     ERC20Mock weth;
     ERC20Mock wbtc;
     uint256 MAX_DEPOSIT_SIZE = type(uint96).max;
+    uint256 public timesMintIsCalled;
+    address[] usersWithCollateralDeposited;
 
     constructor(DSCEngine _engine, DecentralizedStableCoin _dsc) {
         dsce = _engine;
@@ -21,6 +23,35 @@ contract Handler is Test {
         address[] memory collateralTokens = dsce.getCollateralToken();
         weth = ERC20Mock(collateralTokens[0]);
         wbtc = ERC20Mock(collateralTokens[1]);
+    }
+
+    function mintDsc(uint256 amount, uint256 addressSeed) public {
+        if (usersWithCollateralDeposited.length == 0) {
+            return;
+        }
+
+        address sender = usersWithCollateralDeposited[
+            addressSeed % usersWithCollateralDeposited.length
+        ];
+        (uint totalDscMinted, uint collateralValueInUsd) = dsce.getUserACCInfo(
+            sender
+        );
+
+        uint256 maxDscToMint = (collateralValueInUsd / 2) - totalDscMinted;
+        if (maxDscToMint < 0) {
+            return;
+        }
+
+        amount = bound(amount, 0, maxDscToMint);
+        if (amount <= 0) {
+            return;
+        }
+
+        vm.startPrank(sender);
+        dsce.mintDsc(amount);
+        vm.stopPrank();
+
+        timesMintIsCalled++;
     }
 
     function depositCollateral(
@@ -35,6 +66,25 @@ contract Handler is Test {
 
         dsce.depositeCollateral(address(collateral), amountCollateral);
         vm.stopPrank();
+        usersWithCollateralDeposited.push(msg.sender);
+    }
+
+    function redeemCollateral(
+        uint256 collateralSeed,
+        uint256 amountCollateral
+    ) public {
+        ERC20Mock collateral = _getCollateralFromSeed(collateralSeed);
+        uint256 maxCollateralToRedeem = dsce.getCollateralBalanceOfUser(
+            address(collateral),
+            msg.sender
+        );
+
+        amountCollateral = bound(amountCollateral, 0, maxCollateralToRedeem);
+        if (amountCollateral == 0) {
+            return;
+        }
+
+        dsce.redeemCollateral(address(collateral), amountCollateral);
     }
 
     function _getCollateralFromSeed(
